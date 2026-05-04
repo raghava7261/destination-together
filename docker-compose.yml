@@ -1,0 +1,147 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: dt-postgres
+    restart: always
+    environment:
+      POSTGRES_DB: destination_together
+      POSTGRES_USER: dt_user
+      POSTGRES_PASSWORD: dt_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - dt-network
+
+  user-service:
+    build: ./services/user-service
+    container_name: dt-user-service
+    restart: always
+    ports:
+      - "4001:4001"
+    environment:
+      PORT: 4001
+      JWT_SECRET: destination_together_super_secret_2025
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: destination_together
+      DB_USER: dt_user
+      DB_PASSWORD: dt_password
+    depends_on:
+      - postgres
+    networks:
+      - dt-network
+
+  trip-service:
+    build: ./services/trip-service
+    container_name: dt-trip-service
+    restart: always
+    ports:
+      - "4002:4002"
+    environment:
+      PORT: 4002
+      JWT_SECRET: destination_together_super_secret_2025
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: destination_together
+      DB_USER: dt_user
+      DB_PASSWORD: dt_password
+    depends_on:
+      - postgres
+    networks:
+      - dt-network
+
+  fare-service:
+    build: ./services/fare-service
+    container_name: dt-fare-service
+    restart: always
+    ports:
+      - "4003:4003"
+    environment:
+      PORT: 4003
+      JWT_SECRET: destination_together_super_secret_2025
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: destination_together
+      DB_USER: dt_user
+      DB_PASSWORD: dt_password
+    depends_on:
+      - postgres
+    networks:
+      - dt-network
+
+  chat-service:
+    build: ./services/chat-service
+    container_name: dt-chat-service
+    restart: always
+    ports:
+      - "4004:4004"
+    environment:
+      PORT: 4004
+      JWT_SECRET: destination_together_super_secret_2025
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: destination_together
+      DB_USER: dt_user
+      DB_PASSWORD: dt_password
+    depends_on:
+      - postgres
+    networks:
+      - dt-network
+
+  ai-service:
+    build: ./services/ai-service
+    container_name: dt-ai-service
+    restart: always
+    ports:
+      - "4005:4005"
+    environment:
+      PORT: 4005
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    networks:
+      - dt-network
+
+  api-gateway:
+    build: ./services/api-gateway
+    container_name: dt-api-gateway
+    restart: always
+    ports:
+      - "4000:4000"
+    environment:
+      PORT: 4000
+      JWT_SECRET: destination_together_super_secret_2025
+      USER_SERVICE_URL: http://user-service:4001
+      TRIP_SERVICE_URL: http://trip-service:4002
+      FARE_SERVICE_URL: http://fare-service:4003
+      CHAT_SERVICE_URL: http://chat-service:4004
+      AI_SERVICE_URL: http://ai-service:4005
+    depends_on:
+      - user-service
+      - trip-service
+      - fare-service
+      - chat-service
+      - ai-service
+    networks:
+      - dt-network
+
+  frontend:
+    build: ./Frontend
+    container_name: dt-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - api-gateway
+    networks:
+      - dt-network
+
+networks:
+  dt-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
