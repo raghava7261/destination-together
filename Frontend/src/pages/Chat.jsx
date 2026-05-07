@@ -131,7 +131,7 @@ function FareModal({ onClose, token, convName }) {
   async function calculate() {
     setLoading(true)
     try {
-      const res = await fetch('/api/fare/calculate', {
+      const res = await fetch('http://localhost:4000/api/fare/calculate', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ type: 'rideshare', distanceMiles: parseInt(distance), passengers: parseInt(passengers) })
@@ -260,7 +260,7 @@ export default function Chat() {
 
   async function fetchConversations() {
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch('http://localhost:4000/api/chat', {
         headers: { 'Authorization': 'Bearer ' + token }
       })
       const data = await res.json()
@@ -279,7 +279,7 @@ export default function Chat() {
 
   async function fetchMessages(convId) {
     try {
-      const res = await fetch('/api/chat/' + convId + '/messages', {
+      const res = await fetch('http://localhost:4000/api/chat/' + convId + '/messages', {
         headers: { 'Authorization': 'Bearer ' + token }
       })
       const data = await res.json()
@@ -294,7 +294,7 @@ export default function Chat() {
     const text = input.trim()
     setInput('')
     try {
-      const res = await fetch('/api/chat/' + activeConvId + '/messages', {
+      const res = await fetch('http://localhost:4000/api/chat/' + activeConvId + '/messages', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ text })
@@ -313,7 +313,7 @@ export default function Chat() {
   async function createConversation() {
     if (!newConvName.trim()) return
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch('http://localhost:4000/api/chat', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newConvName.trim(), type: 'group' })

@@ -7,8 +7,12 @@ const app = express()
 app.use(helmet())
 app.use(cors({
   origin: '*',
-  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false
 }))
+
+app.use(express.json())
 
 app.use((req, res, next) => {
   console.log(req.method, req.url)

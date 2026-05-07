@@ -101,6 +101,7 @@ const styles = `
   .tp-poi-desc { font-size: 0.78rem; color: rgba(255,255,255,0.6); line-height: 1.5; }
   .tp-poi-close { margin-left: auto; color: rgba(255,255,255,0.4); cursor: pointer; font-size: 1rem; flex-shrink: 0; }
   .tp-poi-close:hover { color: #fff; }
+  .tp-poi-loading { font-size: 0.78rem; color: rgba(255,255,255,0.5); }
   .tp-empty { text-align: center; padding: 80px 40px; color: var(--muted); }
   .tp-empty-icon { font-size: 3rem; margin-bottom: 16px; }
   .tp-empty-title { font-family: var(--serif); font-size: 1.4rem; color: var(--ink); margin-bottom: 8px; }
@@ -178,7 +179,7 @@ function TripCard({ trip, onJoin, onChat, index }) {
             <div className="tp-vehicle-owner-tag">🔑 Private vehicle · {trip.vehicle_model}</div>
           )}
           {trip.trip_type === 'rental' && (
-            <div className="tp-vehicle-owner-tag" style={{ color: '#4a6ee8' }}> Group rental car</div>
+            <div className="tp-vehicle-owner-tag" style={{ color: '#4a6ee8' }}>🚗 Group rental car</div>
           )}
           {trip.trip_type === 'vehicle' && (trip.venmo_handle || trip.zelle_handle) && (
             <div style={{ fontSize: '0.68rem', color: '#1a6b4a', marginBottom: 4 }}>💳 Venmo/Zelle accepted</div>
@@ -230,11 +231,11 @@ function TripCard({ trip, onJoin, onChat, index }) {
       </div>
 
       <div className="tp-card-info">
-        <div className="tp-card-info-item"> {totalSeats - availableSeats}/{totalSeats} joined</div>
-        <div className="tp-card-info-item"> {trip.departure_time?.slice(0,5)}</div>
-        <div className="tp-card-info-item"> {fixDate(trip.trip_date)}</div>
-        {trip.trip_type === 'vehicle' && <div className="tp-card-info-item">Fuel split included</div>}
-        {trip.trip_type === 'rental' && <div className="tp-card-info-item"> Rental cost split</div>}
+        <div className="tp-card-info-item">👥 {totalSeats - availableSeats}/{totalSeats} joined</div>
+        <div className="tp-card-info-item">🕐 {trip.departure_time?.slice(0,5)}</div>
+        <div className="tp-card-info-item">📅 {fixDate(trip.trip_date)}</div>
+        {trip.trip_type === 'vehicle' && <div className="tp-card-info-item">⛽ Fuel split included</div>}
+        {trip.trip_type === 'rental' && <div className="tp-card-info-item">🚗 Rental cost split</div>}
         {trip.vehicle_mpg && trip.trip_type === 'vehicle' && <div className="tp-card-info-item">🛣 {trip.vehicle_mpg} mpg</div>}
       </div>
 
@@ -264,6 +265,8 @@ export default function TripPlanning() {
   const [myTrips, setMyTrips] = useState([])
   const [filter, setFilter] = useState('all')
   const [poiVisible, setPoiVisible] = useState(true)
+  const [poi, setPoi] = useState(null)
+  const [poiLoading, setPoiLoading] = useState(false)
   const [joinedTrip, setJoinedTrip] = useState(null)
   const [showPayment, setShowPayment] = useState(null)
   const [error, setError] = useState('')
@@ -281,10 +284,30 @@ export default function TripPlanning() {
 
   async function fetchMyTrips() {
     try {
-      const res = await fetch('/api/trips/my', { headers: { 'Authorization': 'Bearer ' + token } })
+      const res = await fetch('http://localhost:4000/api/trips/my', { headers: { 'Authorization': 'Bearer ' + token } })
       const data = await res.json()
       if (res.ok) setMyTrips(data.trips || [])
     } catch (err) { console.error('Fetch my trips error:', err) }
+  }
+
+  async function fetchPOIAlerts(from, to) {
+    setPoiLoading(true)
+    setPoi(null)
+    try {
+      const res = await fetch('http://localhost:4000/api/ai/poi-alerts', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fromCity: from, toCity: to })
+      })
+      const data = await res.json()
+      if (res.ok && data.pois && data.pois.length > 0) {
+        setPoi(data.pois[0])
+      }
+    } catch (err) {
+      console.error('POI error:', err)
+    } finally {
+      setPoiLoading(false)
+    }
   }
 
   async function handleSearch() {
@@ -295,20 +318,27 @@ export default function TripPlanning() {
     setError('')
     setLoading(true)
     setSearched(false)
+    setPoi(null)
+    setPoiVisible(true)
     try {
       const tripDate = new Date(search.date + 'T12:00:00').toISOString().slice(0, 10)
       const params = new URLSearchParams({ fromCity: search.from, toCity: search.to, tripDate: tripDate })
-      const res = await fetch('/api/trips/search?' + params, { headers: { 'Authorization': 'Bearer ' + token } })
+      const res = await fetch('http://localhost:4000/api/trips/search?' + params, { headers: { 'Authorization': 'Bearer ' + token } })
       const data = await res.json()
-      if (res.ok) { setTrips(data.trips || []); setSearched(true); setPoiVisible(true) }
-      else setError(data.error || 'Search failed')
+      if (res.ok) {
+        setTrips(data.trips || [])
+        setSearched(true)
+        fetchPOIAlerts(search.from, search.to)
+      } else {
+        setError(data.error || 'Search failed')
+      }
     } catch (err) { setError('Connection error') }
     finally { setLoading(false) }
   }
 
   async function handleJoin(trip) {
     try {
-      const res = await fetch('/api/trips/' + trip.id + '/join', {
+      const res = await fetch('http://localhost:4000/api/trips/' + trip.id + '/join', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token }
       })
@@ -335,7 +365,7 @@ export default function TripPlanning() {
     }
     try {
       const tripDate = new Date(search.date + 'T12:00:00').toISOString().slice(0, 10)
-      const res = await fetch('/api/trips', {
+      const res = await fetch('http://localhost:4000/api/trips', {
         method: 'POST',
         headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -407,7 +437,7 @@ export default function TripPlanning() {
             )}
             {showPayment.zelle_handle && (
               <div className="tp-zelle-row">
-                <span style={{ fontWeight: 500 }}> Pay via Zelle</span>
+                <span style={{ fontWeight: 500 }}>💜 Pay via Zelle</span>
                 <span>{showPayment.zelle_handle}</span>
               </div>
             )}
@@ -441,7 +471,7 @@ export default function TripPlanning() {
             <div className="tp-field">
               <label className="tp-label">From</label>
               <div className="tp-input-icon-wrap">
-                <span className="tp-input-icon"></span>
+                <span className="tp-input-icon">📍</span>
                 <input className="tp-input tp-input-with-icon" placeholder="e.g. New York" value={search.from} onChange={function(e) { set('from', e.target.value) }} />
               </div>
             </div>
@@ -475,18 +505,18 @@ export default function TripPlanning() {
             <div className="tp-field">
               <label className="tp-label">Trip type</label>
               <select className="tp-select" value={tripType} onChange={function(e) { setTripType(e.target.value) }}>
-                <option value="rideshare">Rideshare (Uber / Lyft)</option>
-                <option value="rental">Rental car (Enterprise, Hertz, Budget)</option>
-                <option value="vehicle"> My own vehicle</option>
+                <option value="rideshare">🚕 Rideshare (Uber / Lyft)</option>
+                <option value="rental">🚗 Rental car (Enterprise, Hertz, Budget)</option>
+                <option value="vehicle">🔑 My own vehicle</option>
               </select>
             </div>
 
             {tripType === 'rental' && (
               <div className="tp-rental-box">
-                <div className="tp-rental-box-title">Rental car partners</div>
-                <div className="tp-rental-partner">Enterprise — Group rates available</div>
-                <div className="tp-rental-partner">Hertz — Split cost with group</div>
-                <div className="tp-rental-partner">Budget — Affordable group rentals</div>
+                <div className="tp-rental-box-title">🚗 Rental car partners</div>
+                <div className="tp-rental-partner">🟡 Enterprise — Group rates available</div>
+                <div className="tp-rental-partner">🟢 Hertz — Split cost with group</div>
+                <div className="tp-rental-partner">🔵 Budget — Affordable group rentals</div>
                 <div style={{ fontSize: '0.72rem', color: '#4a6ee8', marginTop: 8 }}>
                   Create the trip and coordinate booking details in the group chat.
                 </div>
@@ -545,15 +575,31 @@ export default function TripPlanning() {
           </div>
 
           <div className="tp-results-panel">
+
             {searched && poiVisible && (
               <div className="tp-poi-alert">
                 <div className="tp-poi-icon">🤖</div>
-                <div>
-                  <div className="tp-poi-label">AI suggestion · On your route</div>
-                  <div className="tp-poi-name">Savannah, GA</div>
-                  <div className="tp-poi-desc">A stunning historic city on your route. Known for beautiful squares and great food. Perfect lunch stop!</div>
+                <div style={{ flex: 1 }}>
+                  {poiLoading ? (
+                    <>
+                      <div className="tp-poi-label">AI suggestion · Loading...</div>
+                      <div className="tp-poi-loading">Finding interesting stops on your route...</div>
+                    </>
+                  ) : poi ? (
+                    <>
+                      <div className="tp-poi-label">AI suggestion · {poi.category} · {poi.detour}</div>
+                      <div className="tp-poi-name">{poi.name}</div>
+                      <div className="tp-poi-desc">{poi.description}</div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="tp-poi-label">AI suggestion · On your route</div>
+                      <div className="tp-poi-name">Explore your route</div>
+                      <div className="tp-poi-desc">No suggestions available for this route right now.</div>
+                    </>
+                  )}
                 </div>
-                <div className="tp-poi-close" onClick={function() { setPoiVisible(false) }}>x</div>
+                <div className="tp-poi-close" onClick={function() { setPoiVisible(false) }}>✕</div>
               </div>
             )}
 
@@ -572,9 +618,9 @@ export default function TripPlanning() {
               <div className="tp-filters">
                 {[
                   { key: 'all', label: 'All trips' },
-                  { key: 'rideshare', label: ' Rideshare' },
-                  { key: 'rental', label: ' Rental' },
-                  { key: 'vehicle', label: 'Private vehicle' },
+                  { key: 'rideshare', label: '🚕 Rideshare' },
+                  { key: 'rental', label: '🚗 Rental' },
+                  { key: 'vehicle', label: '🔑 Private vehicle' },
                 ].map(function(f) {
                   return (
                     <button key={f.key} className={'tp-filter-chip' + (filter === f.key ? ' active' : '')} onClick={function() { setFilter(f.key) }}>

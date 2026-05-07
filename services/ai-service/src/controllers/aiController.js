@@ -1,26 +1,28 @@
-async function callGemini(prompt) {
-  const apiKey = process.env.GEMINI_API_KEY
-  if (!apiKey) throw new Error('GEMINI_API_KEY not set')
+async function callGroq(prompt) {
+  const apiKey = process.env.GROQ_API_KEY
+  if (!apiKey) throw new Error('GROQ_API_KEY not set')
 
-  const response = await fetch(
-    'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=' + apiKey,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 500 }
-      })
-    }
-  )
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ' + apiKey
+    },
+    body: JSON.stringify({
+      model: 'llama-3.1-8b-instant',
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7,
+      max_tokens: 500
+    })
+  })
 
   if (!response.ok) {
     const err = await response.text()
-    throw new Error('Gemini API error: ' + err)
+    throw new Error('Groq API error: ' + err)
   }
 
   const data = await response.json()
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  return data.choices?.[0]?.message?.content || ''
 }
 
 async function getPOIAlerts(req, res) {
@@ -47,10 +49,10 @@ Respond in this exact JSON format only:
 
 Respond with ONLY the JSON array, no other text.`
 
-    const text = await callGemini(prompt)
+    const text = await callGroq(prompt)
     let pois = []
     try {
-      const clean = text.replace(/```json|```/g, '').trim()
+      const clean = text.replace(/\`\`\`json|\`\`\`/g, '').trim()
       pois = JSON.parse(clean)
     } catch (e) {
       pois = [{ name: 'Scenic Route Stop', description: 'A beautiful stop along your route.', detour: '5 miles off route', category: 'Nature' }]
@@ -83,10 +85,10 @@ Respond in this exact JSON format only:
 
 Respond with ONLY the JSON, no other text.`
 
-    const text = await callGemini(prompt)
+    const text = await callGroq(prompt)
     let info = {}
     try {
-      const clean = text.replace(/```json|```/g, '').trim()
+      const clean = text.replace(/\`\`\`json|\`\`\`/g, '').trim()
       info = JSON.parse(clean)
     } catch (e) {
       info = { estimatedMiles: 500, estimatedHours: 8, bestTimeToTravel: 'Early morning', roadTip: 'Check traffic before departure.', weather: 'Varies by season' }

@@ -113,7 +113,7 @@ export default function Profile() {
 
   async function fetchProfile() {
     try {
-      const res = await fetch('/api/auth/profile', {
+      const res = await fetch('http://localhost:4000/api/auth/profile', {
         headers: { 'Authorization': 'Bearer ' + token }
       })
       const data = await res.json()
@@ -127,7 +127,7 @@ export default function Profile() {
 
   async function fetchTrips() {
     try {
-      const res = await fetch('/api/trips/my', {
+      const res = await fetch('http://localhost:4000/api/trips/my', {
         headers: { 'Authorization': 'Bearer ' + token }
       })
       const data = await res.json()
