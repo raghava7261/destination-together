@@ -9,7 +9,7 @@ A full-stack collaborative travel web application that helps travelers in the Un
 ## App Screenshots
 
 ### Landing Page
-![Landing Page](screenshots/landing.png)
+![Landing Page](Homepage.png)
 
 The landing page shows a live trip card previewing a matched group heading from New York to Miami with an AI suggestion panel. Users can see real-time group discounts and available spots before signing up.
 
