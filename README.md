@@ -16,28 +16,28 @@ The landing page shows a live trip card previewing a matched group heading from 
 ---
 
 ### Login and Register
-![Login Page](screenshots/login.png)
+![Login Page](Register.png)
 
 Two-tab authentication page with JWT-based login and a 2-step registration flow. Includes Google OAuth button, password strength meter, and a live trending trip card on the left panel showing real data from the database.
 
 ---
 
 ### Trip Planning with AI Suggestions
-![Trip Planning](screenshots/trips.png)
+![Trip Planning](destination_ai.png)
 
 The core trip discovery page. Search by origin, destination, and date across three trip types — Rideshare, Rental car (Enterprise / Hertz / Budget), or Private vehicle. The black banner at the top shows a **real-time AI suggestion** powered by Groq (Llama 3) — in this screenshot it recommended the Blue Ridge Parkway as a scenic detour 20 miles off the Atlanta to New Jersey route.
 
 ---
 
 ### Group Chat
-![Group Chat](screenshots/chat.png)
+![Group Chat](groupchat.png)
 
 Three-column messaging interface with conversation list, real-time chat area, and a trip details panel on the right. Features quick reply buttons (Food stop? Departure time? Offer to drive), fare split calculator access, confirm booking, and leave group actions.
 
 ---
 
 ### Fare Split Calculator
-![Fare Calculator](screenshots/fare.png)
+![Fare Calculator](pricecalculator.png)
 
 AI-powered fare split modal accessible from the chat page. Select the number of travelers and distance — the calculator calls the Fare Service API and returns the per-person cost, group discount percentage, and total savings vs traveling solo. In this example 2 people splitting a 500-mile trip pay $54 each, saving $81 vs solo.
 
