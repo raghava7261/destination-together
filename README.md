@@ -1,221 +1,152 @@
 # Destination Together
 
-Destination Together is a full-stack collaborative travel web application that helps travelers in the United States find others heading the same route, split travel costs, coordinate trips through group chat, and pay each other directly using Venmo or Zelle.
+A full-stack collaborative travel web application that helps travelers in the United States find others heading the same route, split fares, coordinate via group chat, and pay each other directly using Venmo or Zelle. Powered by **Groq AI** for real-time route suggestions.
 
-The application is built as a microservices architecture with a React frontend, five independent Node.js backend services, a PostgreSQL database, and Google Gemini AI for intelligent route suggestions. Everything runs in Docker containers and can be started with a single command.
+**Tech Stack:** React · Node.js · PostgreSQL · Docker · Groq AI (Llama 3) · JWT · Socket.io · Nginx
 
-Live demo: Run locally using docker-compose up -d and open http://localhost
+---
 
+## App Screenshots
 
-## The Problem It Solves
+### Landing Page
+![Landing Page](screenshots/landing.png)
 
-Traveling between cities is expensive and often lonely when done alone. Destination Together matches travelers heading the same way so they can share rides, split costs, and make the journey social. Whether someone is taking an Uber, renting a car with a group, or driving their own vehicle, the app handles fare splitting, group coordination, and payment links automatically.
+The landing page shows a live trip card previewing a matched group heading from New York to Miami with an AI suggestion panel. Users can see real-time group discounts and available spots before signing up.
 
+---
 
-## Tech Stack
+### Login and Register
+![Login Page](screenshots/login.png)
 
-Frontend: React 18, Vite, React Router v6
+Two-tab authentication page with JWT-based login and a 2-step registration flow. Includes Google OAuth button, password strength meter, and a live trending trip card on the left panel showing real data from the database.
 
-Backend: Node.js, Express.js (5 independent microservices)
+---
 
-Database: PostgreSQL 15
+### Trip Planning with AI Suggestions
+![Trip Planning](screenshots/trips.png)
 
-Authentication: JSON Web Tokens with bcryptjs password hashing
+The core trip discovery page. Search by origin, destination, and date across three trip types — Rideshare, Rental car (Enterprise / Hertz / Budget), or Private vehicle. The black banner at the top shows a **real-time AI suggestion** powered by Groq (Llama 3) — in this screenshot it recommended the Blue Ridge Parkway as a scenic detour 20 miles off the Atlanta to New Jersey route.
 
-AI: Google Gemini 1.5 Flash API
+---
 
-Real-time Messaging: Socket.io with REST polling fallback
+### Group Chat
+![Group Chat](screenshots/chat.png)
 
-Containerization: Docker, Docker Compose
+Three-column messaging interface with conversation list, real-time chat area, and a trip details panel on the right. Features quick reply buttons (Food stop? Departure time? Offer to drive), fare split calculator access, confirm booking, and leave group actions.
 
-Web Server: Nginx reverse proxy
+---
 
-Version Control: Git, GitHub
+### Fare Split Calculator
+![Fare Calculator](screenshots/fare.png)
 
+AI-powered fare split modal accessible from the chat page. Select the number of travelers and distance — the calculator calls the Fare Service API and returns the per-person cost, group discount percentage, and total savings vs traveling solo. In this example 2 people splitting a 500-mile trip pay $54 each, saving $81 vs solo.
 
-## Architecture Overview
+---
 
-The application follows a microservices pattern where each service handles one domain of the application independently.
-
-A React frontend served by Nginx sends all API requests to an API Gateway. The gateway validates JWT tokens and forwards requests to the correct backend service. All backend services connect to a shared PostgreSQL database. The AI service makes external calls to Google Gemini.
+## Architecture
 
 ```
 React Frontend (Port 80 via Nginx)
          |
-    API Gateway (Port 4000)
+    API Gateway (Port 4000) — JWT Auth + Request Routing
          |
-  -----------------------------------------------
+  -------------------------------------------------------
   |          |          |         |             |
 User      Trip        Fare      Chat           AI
 Service   Service    Service   Service       Service
 (4001)    (4002)     (4003)    (4004)        (4005)
   |          |          |         |
-  -----------------------------------------------
+  -------------------------------------------------------
                     |
              PostgreSQL Database
 ```
 
+**8 Docker containers** — start everything with one command.
 
-## Services and What They Do
-
-API Gateway listens on port 4000. It is the single entry point for all client requests. It validates JWT tokens on every protected route and forwards requests to the correct microservice using Node.js built-in HTTP module. Public routes like register and login bypass authentication.
-
-User Service listens on port 4001. It handles registration, login, and profile management. Passwords are hashed using bcryptjs with 10 salt rounds. On successful login or registration it returns a signed JWT token containing the user ID and email.
-
-Trip Service listens on port 4002. It manages trip creation, searching, and joining. Search uses partial city name matching so Atlanta matches atlanta or Atlanta GA. Joining a trip uses a PostgreSQL transaction to atomically insert the member record and decrement available seats, preventing race conditions when multiple users join at the same time.
-
-Fare Service listens on port 4003. It calculates per-person fare splits for three trip types. For rideshare trips it applies group discounts ranging from 20 percent off for 2 people up to 50 percent off for 6 or more people. For private vehicle trips it calculates fuel cost based on distance and MPG, adds toll estimates and vehicle wear cost, then divides by the number of passengers.
-
-Chat Service listens on port 4004. It handles group conversations and messages. Messages are stored in PostgreSQL and the frontend polls every 3 seconds for new messages. Socket.io is also initialized for real-time delivery when available.
-
-AI Service listens on port 4005. It sends structured prompts to Google Gemini 1.5 Flash and returns two types of data. POI alerts suggest 2 to 3 interesting stops along the route between two cities. Route info returns estimated miles, estimated hours, best travel time, a road tip specific to the route, and typical weather conditions.
-
-
-## Database Schema
-
-The database has 6 tables.
-
-Users stores account details including hashed password, city, and travel style preference.
-
-Trips stores route details, departure time, available seats, trip type (rideshare, vehicle, or rental), vehicle model, MPG, Venmo handle, and Zelle handle.
-
-Trip Members links users to trips they have joined and tracks their membership status.
-
-Conversations stores group chat rooms linked to trips.
-
-Conversation Members links users to conversations.
-
-Messages stores individual chat messages with sender ID, sender name, message text, and timestamp.
-
+---
 
 ## Features
 
-User registration and login with JWT authentication
+- JWT authentication — register and login with secure token storage
+- Trip search with partial city name matching across 3 trip types
+- Real-time AI route suggestions powered by Groq (Llama 3.1)
+- Group chat with Socket.io and REST polling fallback
+- Fare split calculator with group discounts up to 50% off
+- Venmo deep-link and Zelle payment flow for private vehicle trips
+- Full Docker Compose deployment — one command to run everything
 
-Trip creation with three types: rideshare using Uber or Lyft, group rental car using Enterprise or Hertz or Budget, and private vehicle with the driver's own car
-
-Trip search with partial city name matching and date filtering
-
-Joining trips with real-time seat count updates using database transactions
-
-Group chat with message history persisted in PostgreSQL
-
-Fare split calculator supporting all three trip types with group discounts
-
-Payment flow for private vehicle trips showing a Venmo deep link pre-filled with amount and trip note, and a Zelle handle for direct transfer
-
-AI-powered route suggestions using Google Gemini showing points of interest, estimated travel time, road tips, and weather
-
-Full Docker containerization with one-command startup
-
+---
 
 ## How to Run Locally
 
-Requirements: Docker Desktop installed and running
+**Requirements:** Docker Desktop installed and running
 
-Step 1: Clone the repository
-```
+**Step 1 — Clone the repo**
+```bash
 git clone https://github.com/raghava7261/destination-together.git
 cd destination-together
 ```
 
-Step 2: Add your Gemini API key. Get a free key at https://aistudio.google.com
-```
-echo "GEMINI_API_KEY=your_key_here" > .env
+**Step 2 — Add your Groq API key**
+
+Get a free key at https://console.groq.com (no credit card needed)
+
+```bash
+echo "GROQ_API_KEY=your_key_here" > .env
 ```
 
-Step 3: Start all services
-```
+**Step 3 — Start all 8 services**
+```bash
 docker-compose up -d
 ```
 
-Step 4: Open the app at http://localhost
+**Step 4 — Open the app**
 
-To stop all services run docker-compose down
+Open http://localhost in your browser.
 
+**Step 5 — Register and test**
+
+Go to http://localhost/login and create a new account. Then search for a trip from Atlanta to New York — the AI suggestion will appear automatically.
+
+**To stop everything**
+```bash
+docker-compose down
+```
+
+---
 
 ## API Endpoints
 
-POST /api/auth/register - Create a new account
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | /api/auth/register | Create account, returns JWT |
+| POST | /api/auth/login | Login, returns JWT |
+| GET | /api/trips/search | Search trips by route and date |
+| POST | /api/trips | Create a new trip |
+| POST | /api/trips/:id/join | Join a trip |
+| GET | /api/trips/my | Get all user trips |
+| POST | /api/fare/calculate | Calculate fare split |
+| POST | /api/chat | Create conversation |
+| POST | /api/chat/:id/messages | Send a message |
+| POST | /api/ai/poi-alerts | Get AI route suggestions (Groq) |
+| POST | /api/ai/route-info | Get AI travel summary |
 
-POST /api/auth/login - Login and receive JWT token
-
-GET /api/auth/profile - Get current user profile
-
-POST /api/trips - Create a new trip
-
-GET /api/trips/search - Search trips by from city, to city, and date
-
-GET /api/trips/my - Get all trips for the logged in user
-
-POST /api/trips/:id/join - Join a specific trip
-
-POST /api/fare/calculate - Calculate fare split by trip type and passengers
-
-POST /api/chat - Create a new conversation
-
-GET /api/chat - Get all conversations for the logged in user
-
-POST /api/chat/:id/messages - Send a message
-
-POST /api/ai/poi-alerts - Get AI-generated points of interest for a route
-
-POST /api/ai/route-info - Get AI-generated route statistics and tips
-
-
-## Project Structure
-
-```
-destination-together/
-    docker-compose.yml
-    .env
-    infra/
-        init.sql
-    Frontend/
-        Dockerfile
-        nginx.conf
-        src/
-            App.jsx
-            pages/
-                Home.jsx
-                Login.jsx
-                TripPlanning.jsx
-                Chat.jsx
-                Profile.jsx
-    services/
-        api-gateway/
-        user-service/
-        trip-service/
-        fare-service/
-        chat-service/
-        ai-service/
-```
-
-
-## Docker Containers
-
-The application runs 8 containers.
-
-dt-postgres runs PostgreSQL 15 with persistent volume storage and automatic schema initialization on first run.
-
-dt-user-service, dt-trip-service, dt-fare-service, dt-chat-service, and dt-ai-service are the five backend microservices.
-
-dt-api-gateway is the single entry point that routes all API traffic.
-
-dt-frontend serves the React application via Nginx and proxies API calls to the gateway.
-
-All containers communicate over a dedicated Docker bridge network called dt-network.
-
+---
 
 ## Environment Variables
 
-GEMINI_API_KEY is the only required environment variable. It goes in the .env file at the root of the project. The Gemini API is free with 1500 requests per day on the free tier.
+Only one variable is required — everything else is pre-configured in docker-compose.yml for local development.
 
-All other configuration values like database credentials, JWT secret, and service URLs are already set in docker-compose.yml for local development.
+```
+GROQ_API_KEY=your_groq_api_key_here
+```
 
+---
 
 ## Author
 
 Raghava Sammeta
 
 GitHub: https://github.com/raghava7261
+
+LinkedIn: https://linkedin.com/in/raghava-sammeta
